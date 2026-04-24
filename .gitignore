@@ -1,0 +1,24 @@
+# Rust
+target/
+Cargo.lock
+
+# C build artifacts
+*.o
+*.a
+*.so
+*.dll
+*.lib
+*.exe
+c_output/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
