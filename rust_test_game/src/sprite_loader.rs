@@ -5,8 +5,6 @@ use std::thread;
 pub struct SpriteConfig {
     pub x: f32,
     pub y: f32,
-    pub width: i32,
-    pub height: i32,
     pub r: i32,
     pub g: i32,
     pub b: i32,
@@ -14,7 +12,7 @@ pub struct SpriteConfig {
 
 impl Default for SpriteConfig {
     fn default() -> Self {
-        SpriteConfig { x: 400.0, y: 200.0, width: 40, height: 40, r: 255, g: 200, b: 0 }
+        SpriteConfig { x: 400.0, y: 200.0, r: 255, g: 200, b: 0 }
     }
 }
 
@@ -35,8 +33,6 @@ fn load_remote_config() -> Result<SpriteConfig, Box<dyn std::error::Error>> {
     Ok(SpriteConfig {
         x: 50.0 + id * 10.0,
         y: 150.0 + id * 5.0,
-        width: 40,
-        height: 40,
         r: ((user_id * 60) % 256) as i32,
         g: 200,
         b: ((user_id * 40 + 100) % 256) as i32,
