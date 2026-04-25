@@ -125,72 +125,143 @@ macro_rules! clear_and_render {
 mod tests {
     use super::*;
 
+    fn run_visual_test<F: FnOnce()>(title: &str, body: F) {
+        init_window(title, 800, 600);
+        body();
+        while should_window_close() == 0 {
+            update_window();
+            std::thread::sleep(std::time::Duration::from_millis(16));
+        }
+    }
+
     #[test]
     #[ignore]
     fn test_simple_game_loop() {
         init_window("Test Game Loop", 800, 600);
         let mut frame_count = 0;
-        while should_window_close() == 0 && frame_count < 3 {
+        // Run for 180 frames (~3 seconds at 60 fps) so the window is visible long enough to observe
+        while should_window_close() == 0 && frame_count < 180 {
             clear_screen_wrapper();
             update_window();
+            std::thread::sleep(std::time::Duration::from_millis(16));
             frame_count += 1;
         }
-        assert_eq!(frame_count, 3);
+        assert!(frame_count > 0, "Game loop must execute at least one frame");
     }
 
     #[test]
     #[ignore]
     fn test_sprite_rendering() {
-        init_window("Test Sprite Rendering", 800, 600);
-        let sprite = new_sprite(100.0, 100.0, 50, 50, 255, 0, 0);
-        assert!(!sprite.is_null());
-        for _ in 0..3 {
-            clear_screen_wrapper();
-            render_sprite_wrapper(sprite);
-            update_window();
-        }
+        run_visual_test("Test Sprite Rendering", || {
+            let sprite = new_sprite(100.0, 100.0, 50, 50, 255, 0, 0);
+            assert!(!sprite.is_null(), "Sprite must be created successfully");
+            // Animate the sprite moving across the screen for ~3 seconds so rendering is clearly visible
+            for frame in 0..180 {
+                if should_window_close() != 0 {
+                    break;
+                }
+                let x = 100.0 + frame as f32 * 2.0;
+                move_sprite(sprite, x, 100.0);
+                clear_screen_wrapper();
+                render_sprite_wrapper(sprite);
+                update_window();
+                std::thread::sleep(std::time::Duration::from_millis(16));
+            }
+        });
     }
 
     #[test]
     #[ignore]
     fn test_screen_clearing() {
-        init_window("Test Screen Clear", 800, 600);
-        for _ in 0..3 {
-            clear_screen_wrapper();
-            update_window();
-        }
-        assert!(true);
+        run_visual_test("Test Screen Clear", || {
+            // Alternate between a filled sprite and a cleared screen every 30 frames
+            // so the clearing effect is visually obvious
+            let sprite = new_sprite(300.0, 200.0, 200, 200, 255, 0, 255);
+            assert!(!sprite.is_null(), "Sprite must be created to demonstrate clearing");
+            for frame in 0..180 {
+                if should_window_close() != 0 {
+                    break;
+                }
+                clear_screen_wrapper();
+                // Show the sprite only during the first half of each 60-frame cycle
+                if (frame % 60) < 30 {
+                    render_sprite_wrapper(sprite);
+                }
+                update_window();
+                std::thread::sleep(std::time::Duration::from_millis(16));
+            }
+        });
     }
 
     #[test]
     #[ignore]
     fn test_key_presses() {
-        init_window("Test Key Presses", 800, 600);
+        init_window("Test Key Presses - Press WASD", 800, 600);
         let window = unsafe { get_window() };
-        assert!(!window.is_null());
-        let key_state = check_key(window, GLFW_KEY_W);
-        assert!(key_state >= 0);
-        for _ in 0..3 {
+        assert!(!window.is_null(), "Window handle must be valid for key polling");
+
+        let sprite = new_sprite(375.0, 275.0, 50, 50, 0, 200, 255);
+        assert!(!sprite.is_null());
+
+        let (mut x, mut y) = (375.0_f32, 275.0_f32);
+        let speed = 3.0_f32;
+
+        // Run for ~5 seconds; the sprite moves in response to WASD so key detection is observable
+        for _ in 0..300 {
+            if should_window_close() != 0 {
+                break;
+            }
+            if check_key(window, GLFW_KEY_W) == GLFW_PRESS { y -= speed; }
+            if check_key(window, GLFW_KEY_S) == GLFW_PRESS { y += speed; }
+            if check_key(window, GLFW_KEY_A) == GLFW_PRESS { x -= speed; }
+            if check_key(window, GLFW_KEY_D) == GLFW_PRESS { x += speed; }
+
+            move_sprite(sprite, x, y);
             clear_screen_wrapper();
+            render_sprite_wrapper(sprite);
             update_window();
+            std::thread::sleep(std::time::Duration::from_millis(16));
         }
+
+        // Verify the window and key API are functional
+        assert!(check_key(window, GLFW_KEY_W) >= 0);
+        assert!(check_key(window, GLFW_KEY_A) >= 0);
+        assert!(check_key(window, GLFW_KEY_S) >= 0);
+        assert!(check_key(window, GLFW_KEY_D) >= 0);
     }
 
     #[test]
     #[ignore]
     fn test_sprite_position_update() {
-        init_window("Test Position Update", 800, 600);
-        let sprite = new_sprite(100.0, 100.0, 50, 50, 0, 255, 0);
-        assert!(!sprite.is_null());
-        move_sprite(sprite, 200.0, 300.0);
-        unsafe {
-            assert_eq!((*sprite).x, 200.0);
-            assert_eq!((*sprite).y, 300.0);
-        }
-        for _ in 0..3 {
-            clear_screen_wrapper();
-            render_sprite_wrapper(sprite);
-            update_window();
-        }
+        run_visual_test("Test Position Update", || {
+            let sprite = new_sprite(0.0, 275.0, 50, 50, 0, 255, 0);
+            assert!(!sprite.is_null(), "Sprite must be created for position update test");
+
+            // Sweep the sprite from left to right across the full window width
+            for frame in 0..180 {
+                if should_window_close() != 0 {
+                    break;
+                }
+                let x = (frame as f32 / 180.0) * 750.0;
+                move_sprite(sprite, x, 275.0);
+
+                unsafe {
+                    assert!((*sprite).x >= 0.0, "Sprite x must be non-negative after move");
+                    assert!((*sprite).y == 275.0, "Sprite y must remain constant");
+                }
+
+                clear_screen_wrapper();
+                render_sprite_wrapper(sprite);
+                update_window();
+                std::thread::sleep(std::time::Duration::from_millis(16));
+            }
+
+            // Final position check
+            move_sprite(sprite, 200.0, 300.0);
+            unsafe {
+                assert_eq!((*sprite).x, 200.0);
+                assert_eq!((*sprite).y, 300.0);
+            }
+        });
     }
 }

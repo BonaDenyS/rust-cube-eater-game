@@ -24,17 +24,16 @@ pub fn fetch_sprite_config(tx: mpsc::Sender<SpriteConfig>) {
 }
 
 fn load_remote_config() -> Result<SpriteConfig, Box<dyn std::error::Error>> {
-    let resp = reqwest::blocking::get("https://jsonplaceholder.typicode.com/todos/1")?;
+    let resp = reqwest::blocking::get(
+        "https://get-random-sprite-data-dan-chiarlones-projects.vercel.app/api/handler",
+    )?;
     let json: serde_json::Value = resp.json()?;
 
-    let id = json["id"].as_i64().unwrap_or(1) as f32;
-    let user_id = json["userId"].as_i64().unwrap_or(1);
-
     Ok(SpriteConfig {
-        x: 50.0 + id * 10.0,
-        y: 150.0 + id * 5.0,
-        r: ((user_id * 60) % 256) as i32,
-        g: 200,
-        b: ((user_id * 40 + 100) % 256) as i32,
+        x: json["x"].as_f64().unwrap_or(400.0) as f32,
+        y: json["y"].as_f64().unwrap_or(200.0) as f32,
+        r: json["r"].as_i64().unwrap_or(255) as i32,
+        g: json["g"].as_i64().unwrap_or(200) as i32,
+        b: json["b"].as_i64().unwrap_or(0) as i32,
     })
 }
